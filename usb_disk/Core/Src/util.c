@@ -1,9 +1,22 @@
 /******************************************************************************
  *	Written by Yilmaz Eyidogan
- *	util functions
- *	Created date: 2016.02.22
+ *	utils
+ *	Created date: 2025.02.02
  *******************************************************************************/
 #include "util.h"
+
+union union_u32
+{
+  uint32_t dword;
+  uint8_t u8[4];
+  struct
+  {
+    uint8_t ll;
+    uint8_t lh;
+    uint8_t hl;
+    uint8_t hh;
+  } byte;
+};
 
 /**
  *******************************************************************************
@@ -13,7 +26,7 @@
  * @par Description little endian to big endian
  *******************************************************************************
  */
-uint16_t wordEndianer(uint16_t wordIn)
+uint16_t word_endianer(uint16_t wordIn)
 {
   uint16_t tmp;
 
@@ -24,36 +37,22 @@ uint16_t wordEndianer(uint16_t wordIn)
   return tmp;
 }
 
-/**
- *******************************************************************************
- * @brief       string copier
- * @param[in]   ptr_source, ptr_destination
- * @retval      length of string
- * @par Description: copy string to any buffer
- *******************************************************************************
- */
-uint8_t copy_string(uint8_t *ptrTarget, uint8_t *ptrSource, uint8_t ucMaxByte)
+uint32_t dword_endianer(uint32_t dword)
 {
-  uint8_t ucCount = 0x00;
-  while (ucMaxByte--)
-  {
-    if (*ptrSource == 0x00)
-    {
-      *ptrTarget = 0x00;
-      break;
-    }
-    *ptrTarget = *ptrSource;
-    ++ptrTarget;
-    ++ptrSource;
-    ++ucCount;
-  }
-  return ucCount;
+  union union_u32 u32_1, u32_2;
+
+  u32_1.dword = dword;
+  u32_2.u8[0] = u32_1.u8[3];
+  u32_2.u8[1] = u32_1.u8[2];
+  u32_2.u8[2] = u32_1.u8[1];
+  u32_2.u8[3] = u32_1.u8[0];
+  return u32_2.dword;
 }
 
 /**
  *******************************************************************************
  * @brief       instead of labs() func
- * @param[in]   ulData1 and ulData2
+ * @param[in]   ulVal1 and ulVal2
  * @retval      Diff
  * @par Description:
  *******************************************************************************
@@ -73,7 +72,7 @@ uint32_t subtraction_abs32(uint32_t ulVal1, uint32_t ulVal2)
 /**
  *******************************************************************************
  * @brief       instead of labs() func
- * @param[in]   data1 and data2
+ * @param[in]   val1 and val2
  * @retval      Diff
  * @par Description:
  *******************************************************************************
@@ -172,6 +171,75 @@ int32_t round32(int32_t val, int32_t rounder)
   {
     return (((val + (rounder / 2)) / rounder) * rounder);
   }
+}
+
+/**
+ *******************************************************************************
+ * @brief byte to ascii converter
+ * @param[in] byte
+ * @param[out] ascii code
+ *******************************************************************************
+ */
+uint8_t uint8_to_ascii(uint8_t val)
+{
+  if (val <= 9)
+  {
+    return val + '0';
+  }
+  if (val <= 0x0F)
+  {
+    return val + 'A';
+  }
+  return 'x';
+}
+
+/**
+ *******************************************************************************
+ * @brief char hexadecimal ascii to uint8_t converter
+ * @param[in] pointer of ascii string
+ * @param[out] uint8_t
+ *******************************************************************************
+ */
+uint8_t get_ascii_hex_byte(uint8_t *ptr)
+{
+  uint8_t u8t = 0x00;
+  uint8_t length = 2;
+
+  while (length--)
+  {
+    u8t *= 0x10;
+    if ((*ptr >= '0') && (*ptr <= '9'))
+    {
+      u8t += (*ptr - '0');
+    }
+    else if ((*ptr >= 'A') && (*ptr <= 'F'))
+    {
+      u8t += (*ptr - 'A' + 10);
+    }
+    ++ptr;
+  }
+  return u8t;
+}
+
+/**
+ *******************************************************************************
+ * @brief char hexadecimal ascii to uint32_t converter
+ * @param[in] pointer of ascii string
+ * @param[in] size_t: 1 for uint8_t, 2 for uint16_t, 4 for uint32_t
+ * @param[out] uint32_t
+ *******************************************************************************
+ */
+uint32_t get_u32_from_string(uint8_t *ptr, uint8_t size_t)
+{
+  uint32_t u32 = 0;
+
+  while (size_t--)
+  {
+    u32 *= 0x100;
+    u32 += get_ascii_hex_byte (ptr);
+    ptr += 2;
+  }
+  return u32;
 }
 
 /* * * END OF FILE * * */

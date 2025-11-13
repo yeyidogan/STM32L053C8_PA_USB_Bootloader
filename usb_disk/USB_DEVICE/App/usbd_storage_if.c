@@ -288,6 +288,24 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 7 */
+  enum
+  {
+    PROG_STATUS_UNDEF,
+    PROG_STATUS_HEADER_DETECTED,
+    PROG_STATUS_START_ADDRESS_VALIDATED,
+    PROG_STATUS_PROGRAMMING
+  };
+  static uint8_t flash_status = PROG_STATUS_UNDEF;
+  uint32_t prog_addr = 0;
+  uint32_t prog_data;
+  static uint8_t hex_line[100] = { 0 };
+  uint16_t ci = 0; //copy i
+  uint16_t i;
+  static uint16_t pi; //paste i
+  uint16_t nb_byte;
+  static uint32_t base_addr = 0;
+  uint8_t hex_record_type;
+
   switch (blk_addr) {
     case VOLUME_START:
 //    init_boot_sector();
@@ -304,7 +322,95 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
       break;
     default:
       ptr_buffer = fat_buffer[BUF_ID_DATA1];
-      memcpy (fat_buffer[BUF_ID_ROOT], buf, STORAGE_BLK_SIZ);
+      memcpy (fat_buffer[BUF_ID_DATA1], buf, STORAGE_BLK_SIZ);
+      if (flash_status == PROG_STATUS_UNDEF)
+      {
+	if (strncmp ((char*) fat_buffer[BUF_ID_DATA1], ":020000040800F2", 15) == 0)
+	{
+	  flash_status = PROG_STATUS_HEADER_DETECTED;
+	  if (strncmp ((char*) &fat_buffer[BUF_ID_DATA1][17], ":10600000", 15) == 0)
+	  {
+	    flash_status = PROG_STATUS_START_ADDRESS_VALIDATED;
+	    pi = 0;
+	    ci = 17;
+	    base_addr = 0x08000000; //in :020000040800F2
+	  }
+	}
+      }
+      if (flash_status == PROG_STATUS_START_ADDRESS_VALIDATED)
+      {
+	flash_status = PROG_STATUS_PROGRAMMING;
+	pi = 0;
+	ci = 17;
+	HAL_FLASH_Unlock ();
+      }
+      if (flash_status == PROG_STATUS_PROGRAMMING)
+      {
+	while (1) //B
+	{
+	  for (; ci < 512; ci++)
+	  {
+	    if (fat_buffer[BUF_ID_DATA1][ci] == ':')
+	    {
+	      break;
+	    }
+	  }
+	  while (1) //A
+	  {
+	    hex_line[pi] = fat_buffer[BUF_ID_DATA1][ci];
+	    ++pi;
+	    ++ci;
+	    if (fat_buffer[BUF_ID_DATA1][ci] == '\r')
+	    {
+	      hex_line[pi] = 0x00;
+	      break;
+	    }
+	    if (ci >= 512)
+	    {
+	      return (USBD_OK);
+	    }
+	  } //while A
+	  if (hex_line[0] != ':')
+	  {
+	    return (USBD_FAIL);
+	  }
+	  nb_byte = get_ascii_hex_byte (&hex_line[1]);
+	  prog_addr = get_u32_from_string (&hex_line[3], 4);
+	  prog_addr += base_addr;
+	  if (prog_addr < 0x08006000 || prog_addr > 0x0800FFFF)
+	  {
+	    return (USBD_FAIL);
+	  }
+	  if (nb_byte > 0x10)
+	  {
+	    return (USBD_FAIL);
+	  }
+	  if (nb_byte < 2)
+	  {
+	    return (USBD_OK);
+	  }
+	  hex_record_type = get_ascii_hex_byte (&hex_line[7]);
+	  if (hex_record_type == 0)
+	  { //data
+	    if (prog_addr % 0x100 == 0x00)
+	    { //if start of page address erase page;
+	      FLASH_PageErase (prog_addr);
+	      FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+	    }
+	    for (i = 0; i < (nb_byte / 4); i++) //qty of u32
+	    {
+	      prog_data = get_u32_from_string (&hex_line[9 + i * 8], 4);
+	      HAL_FLASH_Program (0, prog_addr, prog_data);
+	      prog_addr += 4;
+	    }
+	  }
+	  if (prog_addr > 0x0800FFFF)
+	  {
+	    HAL_FLASH_Lock ();
+	    return (USBD_OK);
+	  }
+	} //while B
+      }
       break;
   }
   return (USBD_OK);
