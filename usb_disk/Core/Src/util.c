@@ -13,8 +13,7 @@
  * @par Description little endian to big endian
  *******************************************************************************
  */
-uint16_t
-wordEndianer (uint16_t wordIn)
+uint16_t wordEndianer(uint16_t wordIn)
 {
   uint16_t tmp;
 
@@ -33,22 +32,21 @@ wordEndianer (uint16_t wordIn)
  * @par Description: copy string to any buffer
  *******************************************************************************
  */
-uint8_t
-copy_string (uint8_t *ptrTarget, uint8_t *ptrSource, uint8_t ucMaxByte)
+uint8_t copy_string(uint8_t *ptrTarget, uint8_t *ptrSource, uint8_t ucMaxByte)
 {
   uint8_t ucCount = 0x00;
   while (ucMaxByte--)
+  {
+    if (*ptrSource == 0x00)
     {
-      if (*ptrSource == 0x00)
-	{
-	  *ptrTarget = 0x00;
-	  break;
-	}
-      *ptrTarget = *ptrSource;
-      ++ptrTarget;
-      ++ptrSource;
-      ++ucCount;
+      *ptrTarget = 0x00;
+      break;
     }
+    *ptrTarget = *ptrSource;
+    ++ptrTarget;
+    ++ptrSource;
+    ++ucCount;
+  }
   return ucCount;
 }
 
@@ -60,17 +58,16 @@ copy_string (uint8_t *ptrTarget, uint8_t *ptrSource, uint8_t ucMaxByte)
  * @par Description:
  *******************************************************************************
  */
-uint32_t
-subtraction_abs32 (uint32_t ulVal1, uint32_t ulVal2)
+uint32_t subtraction_abs32(uint32_t ulVal1, uint32_t ulVal2)
 {
   if (ulVal1 > ulVal2)
-    {
-      return (ulVal1 - ulVal2);
-    }
+  {
+    return (ulVal1 - ulVal2);
+  }
   else
-    {
-      return (ulVal2 - ulVal1);
-    }
+  {
+    return (ulVal2 - ulVal1);
+  }
 }
 
 /**
@@ -81,17 +78,16 @@ subtraction_abs32 (uint32_t ulVal1, uint32_t ulVal2)
  * @par Description:
  *******************************************************************************
  */
-uint32_t
-subtraction_abs32_signed (int32_t val1, int32_t val2)
+uint32_t subtraction_abs32_signed(int32_t val1, int32_t val2)
 {
   if (val1 > val2)
-    {
-      return (uint32_t) (val1 - val2);
-    }
+  {
+    return (uint32_t) (val1 - val2);
+  }
   else
-    {
-      return (uint32_t) (val2 - val1);
-    }
+  {
+    return (uint32_t) (val2 - val1);
+  }
 }
 
 /**
@@ -101,18 +97,17 @@ subtraction_abs32_signed (int32_t val1, int32_t val2)
  * @param[out]
  *******************************************************************************
  */
-void
-convert_hex_to_6byte_array (uint32_t val, uint8_t *ptr)
+void convert_hex_to_6byte_array(uint32_t val, uint8_t *ptr)
 {
   uint8_t i;
 
   ptr += 5;
   for (i = 0; i < 6; i++)
-    {
-      *ptr = val % 10;
-      val /= 10;
-      --ptr;
-    }
+  {
+    *ptr = val % 10;
+    val /= 10;
+    --ptr;
+  }
 }
 
 /**
@@ -122,8 +117,7 @@ convert_hex_to_6byte_array (uint32_t val, uint8_t *ptr)
  * @param[out]
  *******************************************************************************
  */
-uint32_t
-convert_6byte_array_to_hex (uint8_t *ptr)
+uint32_t convert_6byte_array_to_hex(uint8_t *ptr)
 {
   uint32_t val = 0x00;
 
@@ -149,17 +143,16 @@ convert_6byte_array_to_hex (uint8_t *ptr)
  * @param[out]
  *******************************************************************************
  */
-int32_t
-divisor32 (int32_t val, int32_t divisor)
+int32_t divisor32(int32_t val, int32_t divisor)
 {
   if (val < 0)
-    {
-      return ((val - (divisor / 2)) / divisor);
-    }
+  {
+    return ((val - (divisor / 2)) / divisor);
+  }
   else
-    {
-      return ((val + (divisor / 2)) / divisor);
-    }
+  {
+    return ((val + (divisor / 2)) / divisor);
+  }
 }
 
 /**
@@ -169,17 +162,16 @@ divisor32 (int32_t val, int32_t divisor)
  * @param[out]
  *******************************************************************************
  */
-int32_t
-round32 (int32_t val, int32_t rounder)
+int32_t round32(int32_t val, int32_t rounder)
 {
   if (val < 0)
-    {
-      return (((val - (rounder / 2)) / rounder) * rounder);
-    }
+  {
+    return (((val - (rounder / 2)) / rounder) * rounder);
+  }
   else
-    {
-      return (((val + (rounder / 2)) / rounder) * rounder);
-    }
+  {
+    return (((val + (rounder / 2)) / rounder) * rounder);
+  }
 }
 
 /* * * END OF FILE * * */

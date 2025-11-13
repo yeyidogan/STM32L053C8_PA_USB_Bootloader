@@ -23,7 +23,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdint.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,7 +45,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+__IO uint32_t vector_table[48] __attribute__((section(".ARM.__at_0x20000000")));
+void (*func_jump_app)(void);
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,37 +62,99 @@ static void MX_GPIO_Init(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
-
+  uint32_t u32 = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+  HAL_Init ();
 
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
 
   /* Configure the system clock */
-  SystemClock_Config();
+  SystemClock_Config ();
 
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_FATFS_Init();
-  MX_USB_DEVICE_Init();
+  MX_GPIO_Init ();
+  MX_FATFS_Init ();
+  MX_USB_DEVICE_Init ();
   /* USER CODE BEGIN 2 */
+
+  if (HAL_GPIO_ReadPin (B1_User_Button_GPIO_Port, B1_User_Button_Pin) == true)
+  {
+    u32 = true;
+  }
+  if (*(__IO uint32_t*) 0x800FFF8 != 0xAA5500FF)
+  {
+    u32 = true;
+  }
+
+  if (0) //u32 == true)
+  {
+    RCC->AHBENR |= RCC_AHBENR_MIFEN;
+    //USB_RESET_PASSIVE;
+    HAL_Delay (15);
+    MX_FATFS_Init ();
+    MX_USB_DEVICE_Init ();
+
+    /* Clear FLASH flags */
+    FLASH->SR = FLASH_SR_BSY | FLASH_SR_EOP | FLASH_SR_WRPERR | FLASH_SR_PGAERR |
+    FLASH_SR_SIZERR | FLASH_SR_OPTVERR | FLASH_SR_RDERR |
+    FLASH_SR_NOTZEROERR | FLASH_SR_FWWERR;
+    while (0)
+    {
+//      if (boot_mode_timeout > 6000)
+//      { //1 minute
+//	break;
+//      }
+//      if (flash_status == FLASH_PROGRAMMED)
+//      {
+//	delay_ms (1000);
+//	NVIC_SystemReset ();
+//      }
+    }
+  }
+
+  /*
+   if (flash_ob_get_rdp_level () == FLASH_READ_PROTECTION_LEVEL_0)
+   {
+   unlock_option_byte ();
+   write_option_byte (0x00, 0xFF0000FF); //level 1
+   lock_option_byte ();
+   }
+   */
+#define FLASH_APPLICATION_ADDRESS 0x8007000
+
+  if (*(__IO uint32_t*) 0x800FFF8 == 0xAA5500FF)
+  {
+    func_jump_app = (void (*)(void)) (*((__IO uint32_t*) (FLASH_APPLICATION_ADDRESS + 4)));
+
+    if (*(__IO uint32_t*) FLASH_APPLICATION_ADDRESS == (uint32_t) 0x00)
+    {
+      NVIC_SystemReset ();
+    }
+    for (u32 = 0; u32 < 48; u32++)
+    {
+      vector_table[u32] = *(__IO uint32_t*) (FLASH_APPLICATION_ADDRESS + (u32 << 2));
+    }
+
+    __disable_irq ();
+    __set_MSP(*(__IO uint32_t*)FLASH_APPLICATION_ADDRESS);
+    func_jump_app();
+  }
 
   /* USER CODE END 2 */
 
@@ -98,48 +162,48 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   //HAL_GPIO_TogglePin(Red_LED_GPIO_Port, Red_LED_Pin);
   while (1)
-    {
+  {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-      HAL_Delay(400);
-      HAL_GPIO_TogglePin(Red_LED_GPIO_Port, Red_LED_Pin);
-      HAL_Delay(200);
-      HAL_GPIO_TogglePin(Green_LED_GPIO_Port, Green_LED_Pin);
-      HAL_Delay(200);
-      HAL_GPIO_TogglePin(Red_LED_GPIO_Port, Red_LED_Pin);
-      HAL_Delay(200);
-      HAL_GPIO_TogglePin(Green_LED_GPIO_Port, Green_LED_Pin);
-      HAL_Delay(400);
-      HAL_GPIO_TogglePin(Green_LED_GPIO_Port, Green_LED_Pin);
-      HAL_Delay(200);
-      HAL_GPIO_TogglePin(Red_LED_GPIO_Port, Red_LED_Pin);
-      HAL_Delay(200);
-      HAL_GPIO_TogglePin(Green_LED_GPIO_Port, Green_LED_Pin);
-      HAL_Delay(200);
-      HAL_GPIO_TogglePin(Red_LED_GPIO_Port, Red_LED_Pin);
-    }
+    HAL_Delay (400);
+    HAL_GPIO_TogglePin (Red_LED_GPIO_Port, Red_LED_Pin);
+    HAL_Delay (200);
+    HAL_GPIO_TogglePin (Green_LED_GPIO_Port, Green_LED_Pin);
+    HAL_Delay (200);
+    HAL_GPIO_TogglePin (Red_LED_GPIO_Port, Red_LED_Pin);
+    HAL_Delay (200);
+    HAL_GPIO_TogglePin (Green_LED_GPIO_Port, Green_LED_Pin);
+    HAL_Delay (400);
+    HAL_GPIO_TogglePin (Green_LED_GPIO_Port, Green_LED_Pin);
+    HAL_Delay (200);
+    HAL_GPIO_TogglePin (Red_LED_GPIO_Port, Red_LED_Pin);
+    HAL_Delay (200);
+    HAL_GPIO_TogglePin (Green_LED_GPIO_Port, Green_LED_Pin);
+    HAL_Delay (200);
+    HAL_GPIO_TogglePin (Red_LED_GPIO_Port, Red_LED_Pin);
+  }
   /* USER CODE END 3 */
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+  RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = { 0 };
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSI48;
+   * in the RCC_OscInitTypeDef structure.
+   */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI | RCC_OSCILLATORTYPE_HSI48;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
@@ -147,40 +211,40 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLLMUL_6;
   RCC_OscInitStruct.PLL.PLLDIV = RCC_PLLDIV_3;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  if (HAL_RCC_OscConfig (&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler ();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1
+      | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig (&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler ();
   }
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
   PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+  if (HAL_RCCEx_PeriphCLKConfig (&PeriphClkInit) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler ();
   }
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_GPIO_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitTypeDef GPIO_InitStruct = { 0 };
   /* USER CODE BEGIN MX_GPIO_Init_1 */
 
   /* USER CODE END MX_GPIO_Init_1 */
@@ -190,30 +254,30 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Red_LED_GPIO_Port, Red_LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin (Red_LED_GPIO_Port, Red_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Green_LED_GPIO_Port, Green_LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin (Green_LED_GPIO_Port, Green_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_User_Button_Pin */
   GPIO_InitStruct.Pin = B1_User_Button_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_User_Button_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init (B1_User_Button_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : Red_LED_Pin */
   GPIO_InitStruct.Pin = Red_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(Red_LED_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init (Red_LED_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : Green_LED_Pin */
   GPIO_InitStruct.Pin = Green_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(Green_LED_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init (Green_LED_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -225,17 +289,17 @@ static void MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq ();
   while (1)
-    {
-    }
+  {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
