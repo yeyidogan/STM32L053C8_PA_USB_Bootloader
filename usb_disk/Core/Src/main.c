@@ -25,6 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdint.h>
 #include <stdbool.h>
+#include "util.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,7 +47,7 @@
 
 /* USER CODE BEGIN PV */
 
-__attribute__((used, section(".app_vector_table")))  __IO uint32_t vector_table[48];
+__attribute__((used, section(".app_vector_table")))   __IO uint32_t vector_table[48];
 
 void (*func_jump_app)(void);
 uint32_t u32_mtmp = 0;
@@ -63,7 +64,7 @@ static void MX_GPIO_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint32_t u32 = 0;
 /* USER CODE END 0 */
 
 /**
@@ -73,7 +74,7 @@ static void MX_GPIO_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint32_t u32 = 0;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -102,9 +103,9 @@ int main(void)
   {
     u32 = true;
   }
-  if (*(__IO uint32_t*) 0x800FFFC != 0xAA5500FF)
+  if ((uint32_t)(*(__IO uint32_t*) 0x800FFFC) != 0xAA5500FF)  //  (uint16_t)(*(__IO uint16_t *)addr)//
   {
-    u32 = true;
+    u32 = true; //(uint32_t)(*(__IO uint32_t*) 0x800FFFC);
   }
 
 #define FLASH_APPLICATION_ADDRESS 0x8006000
@@ -122,7 +123,7 @@ int main(void)
     FLASH_SR_NOTZEROERR | FLASH_SR_FWWERR;
 
   }
-  else if (*(__IO uint32_t*) 0x800FFFC == 0xAA5500FF)
+  else if ((uint32_t)(*(__IO uint32_t*) 0x800FFFC) == 0xAA5500FF)
   {
     if (*(__IO uint32_t*) FLASH_APPLICATION_ADDRESS != (uint32_t) 0x00)
     {

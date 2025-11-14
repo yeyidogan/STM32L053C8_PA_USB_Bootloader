@@ -344,8 +344,8 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	flash_status = PROG_STATUS_PROGRAMMING;
 	pi = 0;
 	ci = 17;
-	HAL_FLASH_Unlock ();
-	FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+	//HAL_FLASH_Unlock ();
+	//FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
       }
       if (flash_status == PROG_STATUS_PROGRAMMING)
       {
@@ -406,26 +406,29 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	      return (USBD_OK);
 	    }
 
-	    if (prog_addr % 0x100 == 0x00)
-	    { //if start of page address erase page;
-	      FLASH_PageErase (prog_addr);
-	      FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
-	      if (*(__IO uint32_t*) 0x800FFFC == 0xAA5500FF)
-	      {
-		FLASH_PageErase (0x800FF00);
-		FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
-	      }
-	    }
 	    for (i = 0; i < (nb_byte / 4); i++) //qty of u32
 	    {
-	      prog_data = get_u32_from_string (&hex_line[9 + i * 8], 4);
-	      HAL_FLASH_Program (0, prog_addr, prog_data);
-	      prog_addr += 4;
-	      if (prog_addr % 0x100 == 0x00)
+	      if (prog_addr % 0x80 == 0x00)
 	      { //if start of page address erase page;
+		HAL_FLASH_Unlock ();
 		FLASH_PageErase (prog_addr);
 		FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+		HAL_FLASH_Lock ();
+		if ((uint32_t)(*(__IO uint32_t*) 0x800FFFC) == 0xAA5500FF)
+		{
+		  HAL_FLASH_Unlock ();
+		  FLASH_PageErase (0x800FF80);
+		  FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+		  HAL_FLASH_Lock ();
+		}
 	      }
+	      prog_data = get_u32_from_string (&hex_line[9 + i * 8], 4);
+	      //SET_BIT(FLASH->PECR, FLASH_PECR_PROG);
+	      HAL_FLASH_Unlock ();
+	      HAL_FLASH_Program (FLASH_TYPEPROGRAM_WORD, prog_addr, prog_data);
+	      FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+	      HAL_FLASH_Lock ();
+	      prog_addr += 4;
 	    }
 
 	    if (prog_addr >= 0x0800FFFF)
