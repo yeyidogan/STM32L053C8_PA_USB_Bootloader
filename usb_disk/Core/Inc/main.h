@@ -53,6 +53,8 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+extern uint32_t u32_mtmp;
+extern uint32_t u32_flash_status;
 
 /* USER CODE END EFP */
 

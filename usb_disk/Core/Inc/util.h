@@ -27,7 +27,7 @@ extern int32_t round32(int32_t val, int32_t rounder);
 extern uint8_t uint8_to_ascii(uint8_t val);
 extern uint8_t get_ascii_hex_byte(uint8_t *ptr);
 extern uint32_t get_u32_from_string(uint8_t *ptr, uint8_t size_t);
-
+extern uint8_t intel_hex_line_validate(uint8_t *ptr);
 
 #endif
 

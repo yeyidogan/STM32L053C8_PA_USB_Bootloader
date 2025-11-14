@@ -45,8 +45,13 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-__IO uint32_t vector_table[48] __attribute__((section(".ARM.__at_0x20000000")));
+
+__attribute__((used, section(".app_vector_table")))  __IO uint32_t vector_table[48];
+
 void (*func_jump_app)(void);
+uint32_t u32_mtmp = 0;
+uint32_t u32_flash_status = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -89,20 +94,21 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init ();
-  MX_FATFS_Init ();
-  MX_USB_DEVICE_Init ();
+  //MX_FATFS_Init ();
+  //MX_USB_DEVICE_Init ();
   /* USER CODE BEGIN 2 */
 
-  if (HAL_GPIO_ReadPin (B1_User_Button_GPIO_Port, B1_User_Button_Pin) == true)
+  if (HAL_GPIO_ReadPin (B1_User_Button_GPIO_Port, B1_User_Button_Pin) == GPIO_PIN_SET)
   {
     u32 = true;
   }
-  if (*(__IO uint32_t*) 0x800FFF8 != 0xAA5500FF)
+  if (*(__IO uint32_t*) 0x800FFFC != 0xAA5500FF)
   {
     u32 = true;
   }
 
-  if (0) //u32 == true)
+#define FLASH_APPLICATION_ADDRESS 0x8006000
+  if (u32 == true)
   {
     RCC->AHBENR |= RCC_AHBENR_MIFEN;
     //USB_RESET_PASSIVE;
@@ -114,46 +120,26 @@ int main(void)
     FLASH->SR = FLASH_SR_BSY | FLASH_SR_EOP | FLASH_SR_WRPERR | FLASH_SR_PGAERR |
     FLASH_SR_SIZERR | FLASH_SR_OPTVERR | FLASH_SR_RDERR |
     FLASH_SR_NOTZEROERR | FLASH_SR_FWWERR;
-    while (0)
-    {
-//      if (boot_mode_timeout > 6000)
-//      { //1 minute
-//	break;
-//      }
-//      if (flash_status == FLASH_PROGRAMMED)
-//      {
-//	delay_ms (1000);
-//	NVIC_SystemReset ();
-//      }
-    }
+
   }
-
-  /*
-   if (flash_ob_get_rdp_level () == FLASH_READ_PROTECTION_LEVEL_0)
-   {
-   unlock_option_byte ();
-   write_option_byte (0x00, 0xFF0000FF); //level 1
-   lock_option_byte ();
-   }
-   */
-#define FLASH_APPLICATION_ADDRESS 0x8007000
-
-  if (*(__IO uint32_t*) 0x800FFF8 == 0xAA5500FF)
+  else if (*(__IO uint32_t*) 0x800FFFC == 0xAA5500FF)
   {
-    func_jump_app = (void (*)(void)) (*((__IO uint32_t*) (FLASH_APPLICATION_ADDRESS + 4)));
-
-    if (*(__IO uint32_t*) FLASH_APPLICATION_ADDRESS == (uint32_t) 0x00)
+    if (*(__IO uint32_t*) FLASH_APPLICATION_ADDRESS != (uint32_t) 0x00)
     {
-      NVIC_SystemReset ();
-    }
-    for (u32 = 0; u32 < 48; u32++)
-    {
-      vector_table[u32] = *(__IO uint32_t*) (FLASH_APPLICATION_ADDRESS + (u32 << 2));
-    }
+      for (u32 = 0; u32 < 48; u32++)
+      {
+	vector_table[u32] = *(__IO uint32_t*) (FLASH_APPLICATION_ADDRESS + (u32 << 2));
+      }
 
-    __disable_irq ();
-    __set_MSP(*(__IO uint32_t*)FLASH_APPLICATION_ADDRESS);
-    func_jump_app();
+      /* SYSCFG clock enabled */
+      RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+      /* Embedded SRAM is mapped to boot */
+      SYSCFG->CFGR1 |= SYSCFG_CFGR1_MEM_MODE;
+
+      func_jump_app = (void (*)(void)) (*((__IO uint32_t*) (FLASH_APPLICATION_ADDRESS + 4)));
+      __set_MSP (*(__IO uint32_t*) FLASH_APPLICATION_ADDRESS);
+      func_jump_app ();
+    }
   }
 
   /* USER CODE END 2 */
@@ -166,22 +152,36 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    HAL_Delay (400);
+    HAL_Delay (400 + u32_mtmp);
     HAL_GPIO_TogglePin (Red_LED_GPIO_Port, Red_LED_Pin);
-    HAL_Delay (200);
+    HAL_Delay (200 + u32_mtmp);
     HAL_GPIO_TogglePin (Green_LED_GPIO_Port, Green_LED_Pin);
-    HAL_Delay (200);
+    HAL_Delay (200 + u32_mtmp);
     HAL_GPIO_TogglePin (Red_LED_GPIO_Port, Red_LED_Pin);
-    HAL_Delay (200);
+    HAL_Delay (200 + u32_mtmp);
     HAL_GPIO_TogglePin (Green_LED_GPIO_Port, Green_LED_Pin);
-    HAL_Delay (400);
+    HAL_Delay (400 + u32_mtmp);
     HAL_GPIO_TogglePin (Green_LED_GPIO_Port, Green_LED_Pin);
-    HAL_Delay (200);
+    HAL_Delay (200 + u32_mtmp);
     HAL_GPIO_TogglePin (Red_LED_GPIO_Port, Red_LED_Pin);
-    HAL_Delay (200);
+    HAL_Delay (200 + u32_mtmp);
     HAL_GPIO_TogglePin (Green_LED_GPIO_Port, Green_LED_Pin);
-    HAL_Delay (200);
+    HAL_Delay (200 + u32_mtmp);
     HAL_GPIO_TogglePin (Red_LED_GPIO_Port, Red_LED_Pin);
+    if (u32_flash_status == 0xFF00)
+    {
+      //completed programming
+      HAL_Delay (500);
+      /*
+       if (flash_ob_get_rdp_level () == FLASH_READ_PROTECTION_LEVEL_0)
+       {
+       unlock_option_byte ();
+       write_option_byte (0x00, 0xFF0000FF); //level 1
+       lock_option_byte ();
+       }
+       */
+      NVIC_SystemReset ();
+    }
   }
   /* USER CODE END 3 */
 }

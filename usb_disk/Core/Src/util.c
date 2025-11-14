@@ -4,6 +4,7 @@
  *	Created date: 2025.02.02
  *******************************************************************************/
 #include "util.h"
+#include <stdbool.h>
 
 union union_u32
 {
@@ -242,4 +243,39 @@ uint32_t get_u32_from_string(uint8_t *ptr, uint8_t size_t)
   return u32;
 }
 
+/**
+ *******************************************************************************
+ * @brief parse intel hex format
+ * @param[in] pointer of ascii string
+ * @param[in]
+ * @param[out]
+ *******************************************************************************
+ */
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+uint8_t intel_hex_line_validate(uint8_t *ptr)
+{
+  uint16_t byte_count, i;
+  uint16_t sum16;
+  uint16_t checksum;
+
+  if (ptr[0] != ':')
+  {
+    return false;
+  }
+  byte_count = get_ascii_hex_byte (&ptr[1]);
+  sum16 = 0;
+  for (i = 0; i < (byte_count + 4); i++)
+  {
+    sum16 += get_ascii_hex_byte (&ptr[1 + (i * 2)]);
+  }
+  //sum16 &= 0x00FF;
+  checksum = get_ascii_hex_byte (&ptr[1 + (i * 2)]);
+  if (((sum16 + checksum) & 0x00FF) == 0x00)
+  {
+    return true;
+  }
+  return false;
+}
+#pragma GCC pop_options
 /* * * END OF FILE * * */

@@ -24,6 +24,7 @@
 /* USER CODE BEGIN INCLUDE */
 #include "fat12.h"
 #include "util.h"
+#include <stdbool.h>
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -285,6 +286,7 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
  * @param  lun: .
  * @retval USBD_OK if all operations are OK else USBD_FAIL
  */
+uint8_t hex_line[100] = { 0 };
 int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 7 */
@@ -298,7 +300,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
   static uint8_t flash_status = PROG_STATUS_UNDEF;
   uint32_t prog_addr = 0;
   uint32_t prog_data;
-  static uint8_t hex_line[100] = { 0 };
+  //static uint8_t hex_line[100] = { 0 };
   uint16_t ci = 0; //copy i
   uint16_t i;
   static uint16_t pi; //paste i
@@ -328,7 +330,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	if (strncmp ((char*) fat_buffer[BUF_ID_DATA1], ":020000040800F2", 15) == 0)
 	{
 	  flash_status = PROG_STATUS_HEADER_DETECTED;
-	  if (strncmp ((char*) &fat_buffer[BUF_ID_DATA1][17], ":10600000", 15) == 0)
+	  if (strncmp ((char*) &fat_buffer[BUF_ID_DATA1][17], ":10600000", 9) == 0)
 	  {
 	    flash_status = PROG_STATUS_START_ADDRESS_VALIDATED;
 	    pi = 0;
@@ -343,6 +345,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	pi = 0;
 	ci = 17;
 	HAL_FLASH_Unlock ();
+	FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
       }
       if (flash_status == PROG_STATUS_PROGRAMMING)
       {
@@ -352,6 +355,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	  {
 	    if (fat_buffer[BUF_ID_DATA1][ci] == ':')
 	    {
+	      pi = 0;
 	      break;
 	    }
 	  }
@@ -360,6 +364,11 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	    hex_line[pi] = fat_buffer[BUF_ID_DATA1][ci];
 	    ++pi;
 	    ++ci;
+	    if (pi >= sizeof(hex_line))
+	    {
+	      u32_mtmp += 100;
+	      return (USBD_FAIL);
+	    }
 	    if (fat_buffer[BUF_ID_DATA1][ci] == '\r')
 	    {
 	      hex_line[pi] = 0x00;
@@ -370,44 +379,62 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	      return (USBD_OK);
 	    }
 	  } //while A
-	  if (hex_line[0] != ':')
+	  if (intel_hex_line_validate (hex_line) == false)
 	  {
+	    u32_mtmp += 100;
 	    return (USBD_FAIL);
 	  }
 	  nb_byte = get_ascii_hex_byte (&hex_line[1]);
-	  prog_addr = get_u32_from_string (&hex_line[3], 4);
+	  prog_addr = get_u32_from_string (&hex_line[3], 2);
 	  prog_addr += base_addr;
-	  if (prog_addr < 0x08006000 || prog_addr > 0x0800FFFF)
-	  {
-	    return (USBD_FAIL);
-	  }
-	  if (nb_byte > 0x10)
-	  {
-	    return (USBD_FAIL);
-	  }
-	  if (nb_byte < 2)
-	  {
-	    return (USBD_OK);
-	  }
+
 	  hex_record_type = get_ascii_hex_byte (&hex_line[7]);
 	  if (hex_record_type == 0)
 	  { //data
+	    if (prog_addr < 0x08006000 || prog_addr > 0x0800FFFF)
+	    {
+	      u32_mtmp += 100;
+	      return (USBD_FAIL);
+	    }
+	    if (nb_byte > 0x10)
+	    {
+	      u32_mtmp += 100;
+	      return (USBD_FAIL);
+	    }
+	    if (nb_byte < 2)
+	    {
+	      return (USBD_OK);
+	    }
+
 	    if (prog_addr % 0x100 == 0x00)
 	    { //if start of page address erase page;
 	      FLASH_PageErase (prog_addr);
 	      FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+	      if (*(__IO uint32_t*) 0x800FFFC == 0xAA5500FF)
+	      {
+		FLASH_PageErase (0x800FF00);
+		FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+	      }
 	    }
 	    for (i = 0; i < (nb_byte / 4); i++) //qty of u32
 	    {
 	      prog_data = get_u32_from_string (&hex_line[9 + i * 8], 4);
 	      HAL_FLASH_Program (0, prog_addr, prog_data);
 	      prog_addr += 4;
+	      if (prog_addr % 0x100 == 0x00)
+	      { //if start of page address erase page;
+		FLASH_PageErase (prog_addr);
+		FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+	      }
 	    }
-	  }
-	  if (prog_addr > 0x0800FFFF)
-	  {
-	    HAL_FLASH_Lock ();
-	    return (USBD_OK);
+
+	    if (prog_addr >= 0x0800FFFF)
+	    {
+	      HAL_FLASH_Lock ();
+	      FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
+	      u32_flash_status = 0xFF00;
+	      return (USBD_OK);
+	    }
 	  }
 	} //while B
       }
