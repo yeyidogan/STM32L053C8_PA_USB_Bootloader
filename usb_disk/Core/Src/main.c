@@ -47,7 +47,7 @@
 
 /* USER CODE BEGIN PV */
 
-__attribute__((used, section(".app_vector_table")))   __IO uint32_t vector_table[48];
+__attribute__((used, section(".app_vector_table")))    __IO uint32_t vector_table[48];
 
 void (*func_jump_app)(void);
 uint32_t u32_mtmp = 0;
@@ -103,15 +103,15 @@ int main(void)
   {
     u32 = true;
   }
-  if ((uint32_t)(*(__IO uint32_t*) 0x800FFFC) != 0xAA5500FF)  //  (uint16_t)(*(__IO uint16_t *)addr)//
+  if ((uint32_t) (*(__IO uint32_t*) 0x800FFFC) != 0xAA5500FF)
   {
-    u32 = true; //(uint32_t)(*(__IO uint32_t*) 0x800FFFC);
+    u32 = true;
   }
 
 #define FLASH_APPLICATION_ADDRESS 0x8006000
   if (u32 == true)
   {
-    RCC->AHBENR |= RCC_AHBENR_MIFEN;
+    //RCC->AHBENR |= RCC_AHBENR_MIFEN;
     //USB_RESET_PASSIVE;
     HAL_Delay (15);
     MX_FATFS_Init ();
@@ -123,7 +123,7 @@ int main(void)
     FLASH_SR_NOTZEROERR | FLASH_SR_FWWERR;
 
   }
-  else if ((uint32_t)(*(__IO uint32_t*) 0x800FFFC) == 0xAA5500FF)
+  else if ((uint32_t) (*(__IO uint32_t*) 0x800FFFC) == 0xAA5500FF)
   {
     if (*(__IO uint32_t*) FLASH_APPLICATION_ADDRESS != (uint32_t) 0x00)
     {

@@ -344,20 +344,26 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	flash_status = PROG_STATUS_PROGRAMMING;
 	pi = 0;
 	ci = 17;
-	//HAL_FLASH_Unlock ();
-	//FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
       }
       if (flash_status == PROG_STATUS_PROGRAMMING)
       {
 	while (1) //B
 	{
-	  for (; ci < 512; ci++)
+	  if (pi == 0)
 	  {
-	    if (fat_buffer[BUF_ID_DATA1][ci] == ':')
+	    for (; ci < 512; ci++)
 	    {
-	      pi = 0;
-	      break;
+	      if (fat_buffer[BUF_ID_DATA1][ci] == ':')
+	      {
+		pi = 0;
+		break;
+	      }
 	    }
+	  }
+	  if (ci >= 512)
+	  {
+	    pi = 0; //no effect
+	    return (USBD_OK);
 	  }
 	  while (1) //A
 	  {
@@ -384,6 +390,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	    u32_mtmp += 100;
 	    return (USBD_FAIL);
 	  }
+	  pi = 0;
 	  nb_byte = get_ascii_hex_byte (&hex_line[1]);
 	  prog_addr = get_u32_from_string (&hex_line[3], 2);
 	  prog_addr += base_addr;
@@ -414,7 +421,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 		FLASH_PageErase (prog_addr);
 		FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
 		HAL_FLASH_Lock ();
-		if ((uint32_t)(*(__IO uint32_t*) 0x800FFFC) == 0xAA5500FF)
+		if ((uint32_t) (*(__IO uint32_t*) 0x800FFFC) != 0)
 		{
 		  HAL_FLASH_Unlock ();
 		  FLASH_PageErase (0x800FF80);
@@ -425,7 +432,7 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 	      prog_data = get_u32_from_string (&hex_line[9 + i * 8], 4);
 	      //SET_BIT(FLASH->PECR, FLASH_PECR_PROG);
 	      HAL_FLASH_Unlock ();
-	      HAL_FLASH_Program (FLASH_TYPEPROGRAM_WORD, prog_addr, prog_data);
+	      HAL_FLASH_Program (FLASH_TYPEPROGRAM_WORD, prog_addr, dword_endianer (prog_data));
 	      FLASH_WaitForLastOperation (FLASH_TIMEOUT_VALUE);
 	      HAL_FLASH_Lock ();
 	      prog_addr += 4;
